@@ -4,7 +4,7 @@
   "description": "PDFMeow will capture all of the ",
   "main": "index.js",
   "scripts": {
-    "start": "electron ."
+    "start": "C:/work/node/PDFMeow/node_modules/electron/dist/electron.exe . --enable-logging"
   },
   "repository": {
     "type": "git",
