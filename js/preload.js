@@ -55,19 +55,13 @@ function handleStream(stream) {
 
         // 이미지 저장
         var raw = canvas.toDataURL('image/png');
-        // var link = document.createElement('a');
-        // link.setAttribute('download', 'meow_' + index++ + '.png');
-        // link.setAttribute('href', img);
-        // link.click();
-        
-        //window.location.href = img;
         var data = raw.replace(/^data:image\/\w+;base64,/, "");
         var buf = Buffer.from(data, 'base64');
         fs.writeFile('meow_' + ++index + '.png', buf, err => {
             if (err)
-                console.log('meow_' + ++index + '.png failed.', err);
+                console.log('meow_' + index + '.png failed.', err);
             else
-                console.log('meow_' + ++index + '.png saved.');
+                console.log('meow_' + index + '.png saved.');
         });
 
         video.remove();
