@@ -1,0 +1,22 @@
+{
+  "name": "pdfmeow",
+  "version": "1.0.0",
+  "description": "PDFMeow will capture all of the ",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunight1999/PDFMeow.git"
+  },
+  "author": "Jeong Taegyun",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sunight1999/PDFMeow/issues"
+  },
+  "homepage": "https://github.com/sunight1999/PDFMeow#readme",
+  "devDependencies": {
+    "electron": "^24.1.2"
+  }
+}
