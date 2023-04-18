@@ -31,7 +31,7 @@ const createWindow = () => {
 
     win.setMenu(null);
     win.loadFile('html/index.html');
-    //win.openDevTools();
+    // win.openDevTools();
 }
 
 app.whenReady().then(() => {
@@ -49,7 +49,7 @@ app.whenReady().then(() => {
             for (const source of sources) {
                 console.log(source.name);
 
-                if (source.name === '화면 1' || source.name === 'Screen 1') {
+                if (source.name === '전체 화면' || source.name === 'Entire Screen' || source.name === '화면 1' || source.name === 'Screen 1') {
                     win.webContents.send('BEGIN_SERVICE', JSON.stringify({sourceId: source.id, pageNum: pageNum}));
                     return;
                 }

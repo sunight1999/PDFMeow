@@ -1,0 +1,5 @@
+{
+    "pageMoveInterval": 500,
+    "cropImageWaitTime": 5,
+    "scanBeginWaitTime": 5
+}

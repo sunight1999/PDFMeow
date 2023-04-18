@@ -4,6 +4,26 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const { MeowSpacebar } = require('bindings')("meowspacebar");
 
+const CONFIG_PATH = path.join(process.cwd(), 'config.json');
+
+let config;
+function loadConfiguration(){
+    const raw = fs.readFile(CONFIG_PATH, (err, data) => {
+        if (err){
+            log(err.message);
+            config = {
+                "pageMoveInterval": 500,
+                "cropImageWaitTime": 5,
+                "scanBeginWaitTime": 5
+            };
+        }
+        else {
+            config = JSON.parse(data);
+        }
+    });
+}
+loadConfiguration();
+
 function handleWindowControls() {
     // Make minimise/close buttons work when they are clicked
     document.getElementById('min-button').onclick = event => {
@@ -37,12 +57,12 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         let pageNum = param.pageNum;
 
         // meow 디렉토리 존재 여부 확인
-        let appPath = '';
-        let meowPath = '';
-        await ipcRenderer.invoke('GET_APP_PATH', null).then((result) => {
-            appPath = result;
-            meowPath = path.join(appPath, 'meow')
-        });
+        // let appPath = '';
+        let meowPath = path.join(process.cwd(), 'meow');
+        // await ipcRenderer.invoke('GET_APP_PATH', null).then((result) => {
+        //     appPath = result;
+        //     meowPath = path.join(appPath, 'meow')
+        // });
 
         if (fs.existsSync(meowPath))
             fs.rmSync(meowPath, { recursive: true, force: true });
@@ -51,7 +71,7 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
 
         // 이미지 크롭 범위 설정 시작~
         meowIndex = 0;
-        for (let i = 5; i > 0; --i) {
+        for (let i = config.cropImageWaitTime; i > 0; --i) {
             announce(i + '초 뒤 화면이 캡쳐됩니다. e-book 뷰어 화면을 띄우고 기다려주세요.');
             await new Promise(r => setTimeout(r, 1000));
         }
@@ -73,7 +93,7 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         // 이미지 캡쳐 시작~
         meowIndex = 0;
 
-        for (let i = 5; i > 0; --i) {
+        for (let i = config.scanBeginWaitTime; i > 0; --i) {
             announce(i + '초 뒤 스캔이 시작됩니다. e-book 뷰어 화면을 띄우고 기다려주세요.');
             await new Promise(r => setTimeout(r, 1000));
         }
@@ -85,7 +105,7 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
             announce((meowIndex + 1) + ' 페이지 캡쳐 중...');
 
             await doCapture(param.sourceId, meowPath, cropArea);
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, config.pageMoveInterval));
 
             MeowSpacebar();
         } while (--pageNum > 0)
@@ -190,13 +210,13 @@ async function doCapture(sourceId, meowPath, cropArea = null) {
             }
         });
 
-        _doCapture(stream, meowPath, cropArea);
+        await _doCapture(stream, meowPath, cropArea);
     } catch (e) {
         handleError(e)
     }
 }
 
-function _doCapture(stream, meowPath, cropArea = null) {
+async function _doCapture(stream, meowPath, cropArea = null) {
     let video = document.createElement('video');
     video.style.cssText = 'position:absolute;top:-10000px;left:-10000px;';
 
