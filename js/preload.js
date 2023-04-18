@@ -34,6 +34,11 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         let param = JSON.parse(sparam);
         let pageNum = param.pageNum;
 
+        // meow 디렉토리 존재 여부 확인
+        if (!fs.existsSync('meow')){
+            fs.mkdirSync('meow');
+        }
+
         // 이미지 크롭 범위 설정 시작~
         meowIndex = 0;
         for (let i = 5; i > 0; --i) {
@@ -45,7 +50,7 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         await doCapture(param.sourceId);
         await new Promise(r => setTimeout(r, 500));
         maximize();
-        document.getElementById('sample').src = '../meow_1.png';
+        document.getElementById('sample').src = '../meow/meow_1.png';
 
         let cropArea;
         announce('책 페이지의 좌상단, 우하단 위치를 클릭해주세요.');
