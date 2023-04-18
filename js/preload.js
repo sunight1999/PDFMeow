@@ -108,6 +108,8 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
             await new Promise(r => setTimeout(r, config.pageMoveInterval));
 
             MeowSpacebar();
+
+            await new Promise(r => setTimeout(r, 100));
         } while (--pageNum > 0)
 
         focus();
