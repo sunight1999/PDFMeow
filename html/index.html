@@ -1,14 +1,52 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <title>Hello World!</title>
-  </head>
-  <body>
-    <button type="button">test</button>
 
-    <script src="js/meow.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+  <title>PDFMeow</title>
+
+  <link rel="stylesheet" type="text/css" href="../css/style.css">
+</head>
+
+<body>
+  <header id="title-section">
+    <div id="drag-region">
+      <div id="window-title">
+        <img src="../img/BTrayIconTemplate.png">
+        <span>PDFMeow</span>
+      </div>
+
+      <div id="window-controls">
+        <div class="button" id="min-button">
+          <img class="icon" srcset="../img/min-w-10.png 1x" draggable="false" />
+        </div>
+
+        <div class="button" id="max-button">
+          <img class="icon" srcset="../img/max-w-10.png 1x" draggable="false" />
+        </div>
+
+        <div class="button" id="restore-button">
+          <img class="icon" srcset="../img/restore-w-10.png 1x" draggable="false" />
+        </div>
+
+        <div class="button" id="close-button">
+          <img class="icon" srcset="../img/close-w-10.png 1x" draggable="false" />
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="main-section">
+    <p id="announcement">관리자 권한으로 실행하지 않으면 스캔이 정상적으로 수행되지 않습니다.</p>
+    <p id="field-area" class="field-area">
+      <input id="pageNum" class="field-area" type="number" min='1' placeholder="총 페이지 수를 입력해주세요">
+      <button id="beginBtn" class="stylized-button" type="button">시작</button>
+    </p>
+  </div>
+
+  <script src="js/meow.js"></script>
+</body>
+
 </html>
