@@ -8,3 +8,5 @@ pdfmeow-win32-x64
 *.zip
 *.png
 *.pdf
+
+!icon.png
