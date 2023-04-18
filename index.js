@@ -1,8 +1,10 @@
-const { app, BrowserWindow } = require('electron');
+const { app, screen, BrowserWindow } = require('electron');
 const { desktopCapturer } = require('electron')
 const { ipcMain } = require('electron');
 
 const path = require('path');
+
+let isSettingCropArea = false;
 
 let win = null;
 const createWindow = () => {
@@ -19,9 +21,17 @@ const createWindow = () => {
         }
     });
 
+    win.webContents.on('input-event', (e, ie) => {
+        if (isSettingCropArea && ie.type === 'mouseUp'){
+            if (cropArea.length < 2){
+                cropArea.push(screen.getCursorScreenPoint());
+            }
+        }
+    });
+
     win.setMenu(null);
     win.loadFile('html/index.html');
-    //win.loadFile('css/style.css');
+    //win.openDevTools();
 }
 
 app.whenReady().then(() => {
@@ -53,16 +63,57 @@ app.whenReady().then(() => {
                 win.minimize();
                 break;
 
+            case 'maximize':
+                win.setAlwaysOnTop(true, 'screen-saver');
+                app.focus();
+                win.setAlwaysOnTop(false, 'floating');
+                win.maximize();
+                break;
+
+            case 'unmaximize':
+                win.setAlwaysOnTop(true, 'screen-saver');
+                app.focus();
+                win.setAlwaysOnTop(false, 'floating');
+                win.unmaximize();
+                break;
+
+            case 'focus':
+                win.setAlwaysOnTop(true, 'screen-saver');
+                app.focus();
+                win.setAlwaysOnTop(false, 'floating');
+                break;
+                
             case 'close':
                 win.close();
                 break;
         }
     });
 
+    ipcMain.handle('BEGIN_SETTING_CROP_AREA', async (e, a) => {
+        isSettingCropArea = true;
+        await getCropArea();
+
+        return JSON.stringify(cropArea);
+    })
+
     ipcMain.on('PRINT_LOG', (e, log) => {
         console.log(log);
     });
-})
+});
+
+let cropArea = [];
+async function getCropArea(){
+    let clicked = 0;
+    cropArea.length = 0;
+
+    isSettingCropArea = true;
+
+    while (cropArea.length < 2) {
+        await new Promise(r => setTimeout(r, 100));
+    }
+
+    isSettingCropArea = false;
+}
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();

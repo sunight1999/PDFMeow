@@ -33,34 +33,107 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
     try {
         let param = JSON.parse(sparam);
         let pageNum = param.pageNum;
-        meowIndex = 0;
 
-        for (let i = 3; i > 0; --i) {
-            document.getElementById('announcement').textContent = i + "초 뒤 스캔이 시작됩니다. 포커스를 뷰어에 맞춰주세요.";
+        // 이미지 크롭 범위 설정 시작~
+        meowIndex = 0;
+        for (let i = 5; i > 0; --i) {
+            announce(i + '초 뒤 화면이 캡쳐됩니다. e-book 뷰어 화면을 띄우고 기다려주세요.');
             await new Promise(r => setTimeout(r, 1000));
         }
 
+        // 뷰어 화면을 캡쳐하고 크롭 영역 설정을 위해 해당 이미지를 전체 화면으로 출력
+        await doCapture(param.sourceId);
+        await new Promise(r => setTimeout(r, 500));
+        maximize();
+        document.getElementById('sample').src = '../meow_1.png';
+
+        let cropArea;
+        announce('책 페이지의 좌상단, 우하단 위치를 클릭해주세요.');
+        await ipcRenderer.invoke('BEGIN_SETTING_CROP_AREA', null).then((result) => {
+            cropArea = JSON.parse(result);
+        });
+
+        unmaximize();
+        // ~이미지 크롭 범위 설정 종료
+
+        // 이미지 캡쳐 시작~
+        meowIndex = 0;
+
+        for (let i = 5; i > 0; --i) {
+            announce(i + '초 뒤 스캔이 시작됩니다. 포커스를 e-book 뷰어에 맞춰주세요.');
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        minimize();
+
         do {
-            document.getElementById('announcement').textContent = (meowIndex + 1) + ' 페이지 캡쳐 중...';
-            await doCapture(param.sourceId);
+            // 크롭 영역 정보를 같이 전달해 canvas로 크롭 수행
+            announce((meowIndex + 1) + ' 페이지 캡쳐 중...');
+            await doCapture(param.sourceId, cropArea);
 
             MeowSpacebar();
 
             await new Promise(r => setTimeout(r, 500));
         } while (--pageNum > 0)
 
-        document.getElementById('announcement').textContent = 'PDF 변환을 시작합니다.';
+        focus();
+        // ~이미지 캡쳐 종료
+
+        // PDF 변환 시작~
+        announce('PDF 변환을 시작합니다.');
+        // ~PDF 변환 종료
 
     } catch (e) {
         handleError(e)
     }
 });
 
+let announcement = null;
+function announce(msg) {
+    if (announcement == null)
+        announcement = document.getElementById('announcement');
+
+    announcement.textContent = msg;
+}
+
+function maximize(){
+    ipcRenderer.send('HANDLE_WINDOW', 'maximize');
+    toggleSections();
+}
+
+function unmaximize(){
+    ipcRenderer.send('HANDLE_WINDOW', 'unmaximize');
+    toggleSections();
+}
+
+function minimize(){
+    ipcRenderer.send('HANDLE_WINDOW', 'minimize');
+}
+
+function focus(){
+    ipcRenderer.send('HANDLE_WINDOW', 'focus');
+}
+
+function toggleSections(){
+    toggleDisplay(document.getElementById('title-section'));
+    toggleDisplay(document.getElementById('main-section'));
+    toggleDisplay(document.getElementById('sample-section'));
+}
+
+function toggleDisplay(e){
+    let cur = window.getComputedStyle(e).display;
+    
+    if (cur === 'none')
+        e.style.display = 'block';
+    else
+        e.style.display = 'none';
+}
+
 /*
  * 이미지 캡쳐 및 저장
  */
 let meowIndex = 0;
-async function doCapture(sourceId) {
+async function doCapture(sourceId, cropArea = null) {
     try {
         console.log(sourceId)
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -77,13 +150,13 @@ async function doCapture(sourceId) {
             }
         });
 
-        _doCapture(stream);
+        _doCapture(stream, cropArea);
     } catch (e) {
         handleError(e)
     }
 }
 
-function _doCapture(stream) {
+function _doCapture(stream, cropArea = null) {
     let video = document.createElement('video');
     video.style.cssText = 'position:absolute;top:-10000px;left:-10000px;';
 
@@ -94,21 +167,32 @@ function _doCapture(stream) {
         video.play();
 
         var canvas = document.createElement('canvas');
-        canvas.width = 1920;
-        canvas.height = 1080;
 
         var ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (cropArea !== null) {
+            canvas.width = 1920 - cropArea[0].x - (1920 - cropArea[1].x);
+            canvas.height = 1080 - cropArea[0].y - (1080 - cropArea[1].y);
+        }
+        else {
+            canvas.width = 1920;
+            canvas.height = 1080;
+        }
+        
+        ctx.drawImage(video,
+            cropArea === null ? 0 : cropArea[0].x, cropArea === null ? 0 : cropArea[0].y,   // Start from the specified left and the top of the image,
+            canvas.width, canvas.height,     // Get a canvas.width * canvas.height area from the source image,
+            0, 0,                            // Place the result at 0, 0 in the canvas,
+            canvas.width, canvas.height);    // With as width * height (used when do scaling)
 
         // 이미지 저장
         var raw = canvas.toDataURL('image/png');
         var data = raw.replace(/^data:image\/\w+;base64,/, "");
         var buf = Buffer.from(data, 'base64');
-        fs.writeFile('meow_' + ++meowIndex + '.png', buf, err => {
+        fs.writeFile('meow/meow_' + ++meowIndex + '.png', buf, err => {
             if (err)
-                console.log('meow_' + meowIndex + '.png failed.', err);
+                log('meow_' + meowIndex + '.png failed.', err);
             else
-                console.log('meow_' + meowIndex + '.png saved.');
+                log('meow_' + meowIndex + '.png saved.');
         });
 
         video.remove();
@@ -127,4 +211,8 @@ function _doCapture(stream) {
 
 function handleError(e) {
     console.log(e)
+}
+
+function log(msg){
+    ipcRenderer.send('PRINT_LOG', msg);
 }

@@ -212,6 +212,29 @@ input::-webkit-inner-spin-button {
     cursor: default;
 }
 
-/* .stylized-button:focus {
-    box-shadow: rgba(50, 50, 93, .1) 0 0 0 1px inset, rgba(50, 50, 93, .2) 0 6px 15px 0, rgba(0, 0, 0, .1) 0 2px 2px 0, rgba(50, 151, 211, .3) 0 0 0 4px;
-} */
+#sample-section {
+    display: none;
+}
+
+#sample-announcement {
+    width: 600px;
+    height: 50px;
+    padding-top: 20px;
+    border: solid 1px #42454b;
+    background-color: #3a3d42;
+    color: rgb(255, 252, 240);
+    font-weight: 500;
+    text-align: center;
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+#sample {
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
