@@ -13,7 +13,7 @@ const createWindow = () => {
         height: 200,
         resizable: false,
         frame: false,
-        icon: path.join(__dirname, 'img/TrayIconTemplate.png'),
+        icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
             nodeIntegration: true,
             enableRemoteModule: true,
@@ -82,7 +82,7 @@ app.whenReady().then(() => {
                 app.focus();
                 win.setAlwaysOnTop(false, 'floating');
                 break;
-                
+
             case 'close':
                 win.close();
                 break;
@@ -94,7 +94,11 @@ app.whenReady().then(() => {
         await getCropArea();
 
         return JSON.stringify(cropArea);
-    })
+    });
+
+    ipcMain.handle('GET_APP_PATH', async (e, a) => {
+        return app.getAppPath();
+    });
 
     ipcMain.on('PRINT_LOG', (e, log) => {
         console.log(log);

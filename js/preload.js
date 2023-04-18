@@ -1,5 +1,7 @@
 const { ipcRenderer } = require('electron');
 const fs = require('fs');
+const path = require('path');
+const PDFDocument = require('pdfkit');
 const { MeowSpacebar } = require('bindings')("meowspacebar");
 
 function handleWindowControls() {
@@ -18,7 +20,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('beginBtn').onclick = (e) => {
         // 캡쳐 작업이 끝날 때까지 버튼 비활성화
-        document.getElementById('beginBtn').setAttribute('disabled', true);
+        document.getElementById('beginBtn').disabled = true;
 
         // 메인 프로세스에 BEGIN_SERVICE 이벤트 발생 요청
         ipcRenderer.send('INVOKE_CLICK', parseInt(document.getElementById('pageNum').value));
@@ -35,9 +37,17 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         let pageNum = param.pageNum;
 
         // meow 디렉토리 존재 여부 확인
-        if (!fs.existsSync('meow')){
-            fs.mkdirSync('meow');
-        }
+        let appPath = '';
+        let meowPath = '';
+        await ipcRenderer.invoke('GET_APP_PATH', null).then((result) => {
+            appPath = result;
+            meowPath = path.join(appPath, 'meow')
+        });
+
+        if (fs.existsSync(meowPath))
+            fs.rmSync(meowPath, { recursive: true, force: true });
+
+        fs.mkdirSync(meowPath);
 
         // 이미지 크롭 범위 설정 시작~
         meowIndex = 0;
@@ -47,13 +57,12 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         }
 
         // 뷰어 화면을 캡쳐하고 크롭 영역 설정을 위해 해당 이미지를 전체 화면으로 출력
-        await doCapture(param.sourceId);
+        await doCapture(param.sourceId, meowPath);
         await new Promise(r => setTimeout(r, 500));
         maximize();
-        document.getElementById('sample').src = '../meow/meow_1.png';
+        document.getElementById('sample').src = path.join(meowPath, 'meow_1.png');
 
         let cropArea;
-        announce('책 페이지의 좌상단, 우하단 위치를 클릭해주세요.');
         await ipcRenderer.invoke('BEGIN_SETTING_CROP_AREA', null).then((result) => {
             cropArea = JSON.parse(result);
         });
@@ -65,7 +74,7 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         meowIndex = 0;
 
         for (let i = 5; i > 0; --i) {
-            announce(i + '초 뒤 스캔이 시작됩니다. 포커스를 e-book 뷰어에 맞춰주세요.');
+            announce(i + '초 뒤 스캔이 시작됩니다. e-book 뷰어 화면을 띄우고 기다려주세요.');
             await new Promise(r => setTimeout(r, 1000));
         }
 
@@ -74,11 +83,11 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
         do {
             // 크롭 영역 정보를 같이 전달해 canvas로 크롭 수행
             announce((meowIndex + 1) + ' 페이지 캡쳐 중...');
-            await doCapture(param.sourceId, cropArea);
+
+            await doCapture(param.sourceId, meowPath, cropArea);
+            await new Promise(r => setTimeout(r, 500));
 
             MeowSpacebar();
-
-            await new Promise(r => setTimeout(r, 500));
         } while (--pageNum > 0)
 
         focus();
@@ -86,12 +95,38 @@ ipcRenderer.on('BEGIN_SERVICE', async (event, sparam) => {
 
         // PDF 변환 시작~
         announce('PDF 변환을 시작합니다.');
+
+        let croppedSize = calcCroppedSize(cropArea);
+        const doc = new PDFDocument({size: [croppedSize.width, croppedSize.height]});
+        let wstream = fs.createWriteStream('meow.pdf');
+        doc.pipe(wstream);
+
+        for (let i = 1; i <= meowIndex; ++i){
+            doc.image(path.join(meowPath, 'meow_' + i + '.png'), 0, 0);
+
+            if (i < meowIndex)
+                doc.addPage();
+        }
+
+        doc.end();
         // ~PDF 변환 종료
 
+        wstream.on('finish', () => {
+            announce('작업이 완료되었습니다. 폴더를 확인해주세요.');
+            document.getElementById('beginBtn').disabled = false;
+        });
     } catch (e) {
         handleError(e)
     }
 });
+
+function calcCroppedSize(cropArea){
+    let croppedSize = {};
+    croppedSize.width = 1920 - cropArea[0].x - (1920 - cropArea[1].x);
+    croppedSize.height = 1080 - cropArea[0].y - (1080 - cropArea[1].y);
+
+    return croppedSize;
+}
 
 let announcement = null;
 function announce(msg) {
@@ -138,7 +173,7 @@ function toggleDisplay(e){
  * 이미지 캡쳐 및 저장
  */
 let meowIndex = 0;
-async function doCapture(sourceId, cropArea = null) {
+async function doCapture(sourceId, meowPath, cropArea = null) {
     try {
         console.log(sourceId)
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -155,13 +190,13 @@ async function doCapture(sourceId, cropArea = null) {
             }
         });
 
-        _doCapture(stream, cropArea);
+        _doCapture(stream, meowPath, cropArea);
     } catch (e) {
         handleError(e)
     }
 }
 
-function _doCapture(stream, cropArea = null) {
+function _doCapture(stream, meowPath, cropArea = null) {
     let video = document.createElement('video');
     video.style.cssText = 'position:absolute;top:-10000px;left:-10000px;';
 
@@ -175,8 +210,9 @@ function _doCapture(stream, cropArea = null) {
 
         var ctx = canvas.getContext('2d');
         if (cropArea !== null) {
-            canvas.width = 1920 - cropArea[0].x - (1920 - cropArea[1].x);
-            canvas.height = 1080 - cropArea[0].y - (1080 - cropArea[1].y);
+            let croppedSize = calcCroppedSize(cropArea);
+            canvas.width = croppedSize.width;
+            canvas.height = croppedSize.height;
         }
         else {
             canvas.width = 1920;
@@ -193,7 +229,7 @@ function _doCapture(stream, cropArea = null) {
         var raw = canvas.toDataURL('image/png');
         var data = raw.replace(/^data:image\/\w+;base64,/, "");
         var buf = Buffer.from(data, 'base64');
-        fs.writeFile('meow/meow_' + ++meowIndex + '.png', buf, err => {
+        fs.writeFile(path.join(meowPath, 'meow_' + ++meowIndex + '.png'), buf, err => {
             if (err)
                 log('meow_' + meowIndex + '.png failed.', err);
             else

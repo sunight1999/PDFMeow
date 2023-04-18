@@ -3,5 +3,8 @@ build
 node_modules
 meow
 out
+pdfmeow-win32-x64
 
+*.zip
 *.png
+*.pdf
